@@ -34,7 +34,9 @@ export function addScript(object, funcOrString, opts) {
         throw 'script name "' + name + '" is already reserved!';
     }
 
-    object.__scripts__[name] = object[name] = func.bind(object);
+    object[name] = func.bind(object);
+    object[name].isScript = true;
+    object.__scripts__[name] = funcOrString.toString();
 }
 
 export function callScript(object, name) {
