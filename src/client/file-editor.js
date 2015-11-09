@@ -25,6 +25,10 @@ function getURL(){
 	return new URL(baseurl + filename)
 }
 
+export function getContents() {
+	return currentEditor().getValue();
+}
+
 export function loadFile(){
 	var url = getURL()
 	console.log("load " + url)

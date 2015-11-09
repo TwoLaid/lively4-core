@@ -31,7 +31,9 @@ export function addScript(object, funcOrString, opts) {
     }
 
     if (typeof object[name] !== 'undefined') {
-        throw 'script name "' + name + '" is already reserved!';
+        if (!opts.update || object[name].isScript !== true) {
+            throw 'script name "' + name + '" is already reserved!';
+        }
     }
 
     object[name] = func.bind(object);

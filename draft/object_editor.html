@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Lively 4 Our First Page</title>
+<style type="text/css" media="screen">
+    #baseurl { 
+        width: 800px;
+    }
+    #editor { 
+        height: 400px;
+        width: 500px;
+        display: inline-block;
+    }
+    #console { 
+        width: 800px;
+        height: 300px;
+        max-height: 200px;
+        overflow: auto;
+        background-color: #eeeeee;
+        word-break: normal !important;
+        word-wrap: normal !important;
+        white-space: pre !important;   
+    }
+    #commandline { 
+        width: 800px;
+    }
+    #object-inspector {
+        display: inline-block;
+        width: 300px;
+        height: 400px;
+        vertical-align: top;
+    }
+    #object-selector, #object-inspector select {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .__current-element {
+        outline: 2px dashed #BD0B0B;
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-2.1.4.js" type="text/javascript" charset="utf-8"></script>
+
+
+<!-- BEGIN SYSTEM.JS: should go away, until then we use a "static" global source --> 
+<script src="https://livelykernel.github.io/lively4-core/src/external/system.src.js" type="text/javascript" charset="utf-8"></script>
+<script>
+  System.paths['babel'] ='https://livelykernel.github.io/lively4-core/src/external/babel-browser.js'
+  System.config({
+    transpiler: 'babel',
+    babelOptions: { },
+    map: {
+        babel: 'https://livelykernel.github.io/lively4-core/src/external/babel-browser.js'
+    }
+  });
+</script>
+<!-- END SYSTEM.JS-->
+
+</head>
+<body>
+<h1>Lively 4 -- Bootstrapping Test Page</h1>
+
+<div id="editor"></div>
+
+<div id="object-inspector">
+    <input id="object-selector" value="" placeholder="Selector">
+    <select id="object-selector-list" size="10"></select>
+    <select id="object-scripts" size="10"></select>
+    <button id="object-script-add">Add</button>
+    <button id="object-script-remove">Remove</button>
+    <button id="object-script-run">Run</button>
+    <br/>
+    <input type="checkbox" id="object-mark"> <label for="object-mark">Mark object</label>
+</div>
+
+<pre id="console"></pre>
+<input type="text" id="commandline" value="">
+
+<br/>
+<button id="inject">inject</button>
+
+<!-- BEGIN ACE -->
+<!-- We also have to load ace "locally", because loading it remotely ends in a race condition -->
+<script src="../src/external/ace.js" type="text/javascript" charset="utf-8"></script>
+<script>ace.edit("editor");</script>
+<!-- END ACE -->
+
+
+<script>
+    var lively4url =  "../" // or any abosolute path to lively4 ? Any idea for computeRoot() ? #JensLincke #OpenQuestion
+
+    //// #TODO The ace editor tries to be very clever, so it cannot be loaded through "import" at the moment 
+    //// (e.g. AMD promise error)
+    // System.import(lively4url + "src/external/ace.js").then(function(){
+    //         ace.edit("editor")
+    // })
+        
+    System.import(lively4url + "/src/client/load.js").then(function(){
+        System.import("commandline.js")
+        System.import(lively4url + "src/client/debug-serviceworker.js") 
+    }).catch(function(err) { alert("load Lively4 failed")})
+</script>
+
+
+<script>
+
+$('#inject').click(function()  {
+    scriptManager.addScript($('h1'), 
+function alertText() {
+    alert(this.innerText);
+});
+});
+
+
+var $currentSelector = null;
+var currentElement = null;
+var unsavedChanges = false;
+
+$('#object-selector').on('input', function() {
+    console.log($(this).val());
+    $currentSelector = $($(this).val());
+    currentElement = null;
+
+    updateObjectEditor();
+});
+
+$('#object-selector-list').change(function() {
+    console.log('changed');
+    var idx = $('option:selected', this).index();
+    console.log(idx);
+    currentElement = $currentSelector[idx];
+    console.log(currentElement);
+
+    updateObjectScripts();
+});
+
+$('#object-scripts').change(function() {
+    if (currentElement) {
+        var scriptName = $('option:selected', this).text();
+        var script = currentElement.__scripts__[scriptName];
+        ace.edit("editor").setValue(script);
+    }
+});
+
+$('#object-script-add').click(function() {
+    if (currentElement) {
+        if (typeof currentElement.__scripts__ === 'undefined') {
+            currentElement.__scripts__ = {};
+        }
+
+        var scriptName = prompt('Please enter a new script name', '');
+        if (!scriptName || scriptName.length <= 0) {
+            return;
+        }
+
+        if (typeof currentElement.__scripts__[scriptName] !== 'undefined') {
+            alert('Script name already in use.');
+            return;
+        }
+
+        scriptManager.addScript(currentElement, 'function ' + scriptName + '() {\n  \n}');
+        updateObjectEditor();
+        $('#object-scripts').val(scriptName).change();
+    }
+});
+
+$('#object-script-remove').click(function() {
+    if (currentElement) {
+        var scriptName = $('#object-scripts').val();
+        if (scriptName) {
+            ace.edit("editor").setValue('');
+            delete currentElement.__scripts__[scriptName];
+            $('#object-scripts option:selected').remove();
+            $('#object-scripts').change();
+        }
+    }
+});
+
+$('#object-script-run').click(function() {
+    if (currentElement) {
+        var scriptName = $('#object-scripts').val();
+        if (scriptName) {
+            scriptManager.callScript(currentElement, scriptName);
+        }
+    }
+});
+
+$('#object-mark').change(function() {
+    markCurrentElement();
+});
+
+$('#editor').keydown(function (e){
+    if ((e.metaKey || e.ctrlKey) && e.keyCode == 83) {
+        console.log('SAVE!!!!');
+    
+        saveCurrentScript();
+
+        e.preventDefault();
+        return false;
+    }
+});
+
+function updateObjectScripts() {
+    $('#object-scripts').html('');
+
+    if (currentElement != null && typeof currentElement.__scripts__ !== 'undefined') {
+        $.each(currentElement.__scripts__, function(k, v) {
+            $('#object-scripts').append('<option value="'+k+'">' + k + '</option>');
+        });
+    }
+
+    markCurrentElement();
+}
+
+function updateObjectEditor() {
+    // update selector list
+    $('#object-selector-list').html('');
+    $currentSelector.each(function(k, v) {
+        $('#object-selector-list').append('<option>' + v + '</option>');
+    });
+
+    updateObjectScripts();
+
+    ace.edit("editor").setValue('');
+    markCurrentElement();
+}
+
+function saveCurrentScript() {
+    if (!currentElement) {
+        return;
+    }
+    var scriptName = $('#object-scripts option:selected').text();
+    if (scriptName) {
+        scriptManager.addScript(currentElement, ace.edit('editor').getValue(), { update: true });
+    }
+}
+
+function markCurrentElement() {
+    $('.__current-element').removeClass('__current-element');
+    if (currentElement && $('#object-mark').is(':checked')) {
+        $(currentElement).addClass('__current-element');
+    }
+}
+
+</script>
+</body>
+</html>
