@@ -42,9 +42,13 @@
 
 <script src="https://code.jquery.com/jquery-2.1.4.js" type="text/javascript" charset="utf-8"></script>
 
+<script>
+    var lively4url =  "../" // or any abosolute path to lively4 ? Any idea for computeRoot() ? #JensLincke #OpenQuestion
+
+</script>
 
 <!-- BEGIN SYSTEM.JS: should go away, until then we use a "static" global source --> 
-<script src="https://livelykernel.github.io/lively4-core/src/external/system.src.js" type="text/javascript" charset="utf-8"></script>
+<script src="../src/external/system.src.js" type="text/javascript" charset="utf-8"></script>
 <script>
   System.paths['babel'] ='https://livelykernel.github.io/lively4-core/src/external/babel-browser.js'
   System.config({
@@ -70,6 +74,7 @@
     <button id="object-script-add">Add</button>
     <button id="object-script-remove">Remove</button>
     <button id="object-script-run">Run</button>
+    <button id="object-inspect">Inspect</button>
     <br/>
     <input type="checkbox" id="object-mark"> <label for="object-mark">Mark object</label>
 </div>
@@ -88,17 +93,22 @@
 
 
 <script>
-    var lively4url =  "../" // or any abosolute path to lively4 ? Any idea for computeRoot() ? #JensLincke #OpenQuestion
+
 
     //// #TODO The ace editor tries to be very clever, so it cannot be loaded through "import" at the moment 
     //// (e.g. AMD promise error)
     // System.import(lively4url + "src/external/ace.js").then(function(){
     //         ace.edit("editor")
     // })
+
+    var ObjectEditor;
         
     System.import(lively4url + "/src/client/load.js").then(function(){
         System.import("commandline.js")
         System.import(lively4url + "src/client/debug-serviceworker.js") 
+        System.import(lively4url + "src/client/object-editor.ec6") .then(function(module) {
+            ObjectEditor = module.ObjectEditor;
+        });
     }).catch(function(err) { alert("load Lively4 failed")})
 </script>
 
@@ -185,6 +195,14 @@ $('#object-script-run').click(function() {
         }
     }
 });
+
+$('#object-inspect').click(function() {
+    if (currentElement) {
+        var objectEditor = document.createElement('object-editor');
+        objectEditor.target = currentElement;
+        $('body').append(objectEditor);
+    }
+})
 
 $('#object-mark').change(function() {
     markCurrentElement();

@@ -1,0 +1,157 @@
+"use strict";
+
+/*var _HTMLElement = HTMLElement;
+function HTMLElement() {}
+HTMLElement.prototype = _HTMLElement.prototype;*/
+
+export class ObjectEditor extends HTMLDivElement {
+
+  get target() {
+    return this._target;
+  }
+
+  set target(val) {
+    this._target = val;
+    this.render();
+  }
+
+  createdCallback() {
+    console.log('created!');
+    this.created = true;
+    this.createShadowRoot().innerHTML = `
+      <style>
+        :host {
+          display: block;
+          position: fixed;
+          top: calc(50% - 150px);
+          left: calc(50% - 200px);
+          right: 50%;
+          bottom: 50%;
+          background: white;
+          border: 1px solid #666;
+          width: 400px;
+          height: 300px;
+        }
+
+        #content {
+          height: 100%;
+          width: 100%;
+        }
+
+        #script-list {
+          float: left;
+          width: 20%;
+          height: 83%;
+        }
+        #script-list select {
+          width: 100%;
+          height: 100%;
+        }
+
+        #bar {
+          height: 30px;
+          background: cornsilk;
+        }
+        #bar .title {
+          float: left;
+          margin: 0;
+        }
+
+        #close {
+          float: right;
+        }
+
+        #editor {
+          float: left;
+          width: 78%;
+          height: 81%;
+        }
+
+        .toolbar {
+          width: 100%;
+          overflow: auto;
+        }
+
+        .bar-left {
+          float: left;
+        }
+        .bar-right {
+          float: right;
+        }
+      </style>
+
+      <div id="content"> 
+        <div id="bar">
+          <h2 class="title">Object Editor</h2>
+          <span id="close">X</span>
+        </div>
+        <div id="script-list">
+          <select size="20">
+          </select>
+        </div>
+        <textarea id="editor">edit me!</textarea>
+        <div class="toolbar">
+          <div class="bar-left">
+            <button id="add-script">Add</button>
+            <button id="add-script">Remove</button>
+          </div>
+          <div class="bar-right">
+            <button id="save-script">Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.scriptList = this.shadowRoot.querySelector('#script-list select');
+    this.editor = this.shadowRoot.querySelector('#editor');
+    this.closeButton = this.shadowRoot.querySelector('#close');
+  }
+
+  attachedCallback() {
+    console.log('attachedCallback!');
+    this.render();
+
+    this.scriptList.addEventListener('change', (e) => { this.scriptChanged(e) });
+    this.closeButton.addEventListener('click', (e) => { this.closeButtonClicked(e) });
+  }
+
+  render() {
+    if (!this.created) {
+      return;
+    }
+
+    console.log(this);
+    this.shadowRoot.querySelector('#bar .title').innerText = this.target.tagName;
+
+    // Scripts
+    let scriptHtml = '';
+    if (typeof this.target.__scripts__ !== 'undefined') {
+      for (let scriptName in this.target.__scripts__) {
+        scriptHtml += '<option value="' + scriptName + '">' + scriptName + '</option>';
+      }
+    }
+    this.scriptList.innerHTML = scriptHtml;
+  }
+
+  closeButtonClicked() {
+    this.parentNode.removeChild(this);
+  }
+
+  scriptChanged(e) {
+    if (this.scriptList.selectedIndex >= 0) {
+      var scriptName = this.scriptList.selectedOptions[0].value;
+      this.loadScript(scriptName);
+    }
+  }
+
+  loadScript(scriptName) {
+    if (typeof this.target.__scripts__ === 'undefined' ||
+      typeof this.target.__scripts__[scriptName] === 'undefined') {
+      return;
+    }
+
+    this.editor.innerText = this.target.__scripts__[scriptName];
+  }
+}
+
+document.registerElement('object-editor', ObjectEditor);
