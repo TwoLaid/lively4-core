@@ -38,6 +38,10 @@
     .__current-element {
         outline: 2px dashed #BD0B0B;
     }
+
+
+
+
 </style>
 
 <script src="https://code.jquery.com/jquery-2.1.4.js" type="text/javascript" charset="utf-8"></script>
@@ -65,7 +69,34 @@
 <body>
 <h1>Lively 4 -- Bootstrapping Test Page</h1>
 
+
+
 <div id="editor"></div>
+
+<script type="text/javascript">
+    var $dragging = null;
+    var dragDelta = {left: 0, top: 0};
+    $(document.body).on('mousedown', '.window', function(e) {
+        $dragging = $(e.target);
+        dragDelta = {
+            left: $dragging.offset().left - $dragging.parents('.window').offset().left + e.offsetX,
+            top: $dragging.offset().top - $dragging.parents('.window').offset().top + e.offsetY
+        }
+    });
+    $(document.body).on('mouseup', function() {
+        $dragging = null;
+        dragDelta = {left:0, top:0};
+    });
+    $(document.body).on('mousemove', function(e) {
+        if ($dragging) {
+            $dragging.parents('.window').css({
+                left: e.pageX - dragDelta.left,
+                top: e.pageY - dragDelta.top
+            });
+            e.preventDefault();
+        }
+    });
+</script>
 
 <div id="object-inspector">
     <input id="object-selector" value="" placeholder="Selector">

@@ -4,7 +4,194 @@
 function HTMLElement() {}
 HTMLElement.prototype = _HTMLElement.prototype;*/
 
-export class ObjectEditor extends HTMLDivElement {
+export class WindowElement extends HTMLDivElement {
+
+  // window title
+  get title() {
+    return this._title;
+  }
+  set title(val) {
+    this._title =  val;
+    this.render();
+  }
+
+  // content of the window body
+  get content() {
+    return this._content;
+  }
+  set content(val) {
+    this._content =  val;
+
+    if (this.created) {
+      this.contentBlock.innerHTML = val;
+    }
+  }
+
+  // additional CSS styles
+  get styles() {
+    return this._styles;
+  }
+  set styles(val) {
+    this._styles =  val;
+
+    if (this.created) {
+      this.stylesBlock.innerHTML = val;
+    }
+  }  
+
+  // called when element is created
+  createdCallback() {
+    console.log('window createdCallback!');
+
+    this.createShadowRoot().innerHTML = `
+      <style>
+        :host * {
+            box-sizing: border-box;
+        }
+        .window {
+            width: auto;
+            height: auto;
+            display: block;
+            background-color: #ffffff;
+            box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.3);
+        }
+        .window-titlebar {
+            position: relative;
+            display: flex;
+            width: 100%;
+            padding: 0.3em 0.4em;
+            border: none;
+            border-bottom: 1px #e9e9e9 solid;
+        }
+        .window-title {
+            flex-grow: 1;
+            font-weight: 600;
+            vertical-align: middle;
+            cursor: move;
+        }
+        .window-title span {
+            vertical-align: middle;
+            font-size: 1.1em;
+            line-height: 1.5rem;
+        }
+        .window-controls {
+            flex-grow: 0;
+        }
+        .window-min, .window-max, .window-close {
+            display: inline-block;
+            color: #777777;
+            background-color: #ffffff;
+            width: 1.5rem;
+            text-align: center;
+            margin-left: 1px;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1.5rem;
+        }
+        .window-min:hover, .window-max:hover, .window-close:hover {
+            background-color: #cde6f7;
+            color: #2a8dd4;
+        }
+        .window-content {
+            display: block;
+            position: relative;
+            padding: 0.4em;
+            width: 100%;
+            height: auto;
+        }
+      </style>
+
+      <style id="window-styles">
+      </style>
+
+      <div class="window">
+          <div class="window-titlebar">
+              <div class="window-title"><span></span></div>
+              <div class="window-controls">
+                  <span class="window-min">&lowbar;</span>
+                  <span class="window-max">&#9634;</span>
+                  <span class="window-close">&#10005;</span>
+              </div>
+          </div>
+          <div class="window-content" id="window-content"></div>
+      </div>
+    `;
+
+    // define shortcut variables
+    this.titleSpan = this.shadowRoot.querySelector('.window-title span');
+    this.minButton = this.shadowRoot.querySelector('.window-min');
+    this.maxButton = this.shadowRoot.querySelector('.window-max');
+    this.closeButton = this.shadowRoot.querySelector('.window-close');
+    this.contentBlock = this.shadowRoot.querySelector('#window-content');
+    this.stylesBlock = this.shadowRoot.querySelector('#window-styles');
+
+    // bind events for window behavior
+    this.dragging = false;
+    this.closeButton.addEventListener('click', (e) => { this.closeButtonClicked(e) });
+    this.minButton.addEventListener('click', (e) => { this.minButtonClicked(e) });
+    this.maxButton.addEventListener('click', (e) => { this.maxButtonClicked(e) });
+    this.shadowRoot.querySelector('.window-title').addEventListener('mousedown', (e) => { this.titleMouseDown(e) });
+    document.body.addEventListener('mousemove', (e) => { this.windowMouseMove(e) });
+    document.body.addEventListener('mouseup', (e) => { this.windowMouseUp(e) });
+
+    this.created = true;
+    this.render();
+  }
+
+  attachedCallback() {
+    console.log('window attachedCallback!');
+  }
+
+  // (re)render the element
+  render() {
+    console.log('window render!');
+    if (this.created) {
+      this.titleSpan.innerText = this.title;
+      this.stylesBlock.innerHTML = this.styles;
+
+      // only update when it changed, so we dont update it unnecessarily
+      if (this.contentBlock.innerHTML !== this.content) {
+        this.contentBlock.innerHTML = this.content;  
+      }
+    }
+  }
+
+  minButtonClicked(e) {
+    // TODO
+  }
+
+  maxButtonClicked(e) {
+    // TODO
+  }
+
+  closeButtonClicked(e) {
+    this.parentNode.removeChild(this);
+  }
+
+  titleMouseDown(e) {
+    let offsetWindow = $(this).offset();
+
+    this.dragging = {
+        left: e.pageX - offsetWindow.left,
+        top: e.pageY - offsetWindow.top
+    };
+  }
+
+  windowMouseUp(e) {
+    this.dragging = false;
+  }
+
+  windowMouseMove(e) {
+    if (this.dragging) {
+      $(this).css({
+          left: e.pageX - this.dragging.left,
+          top: e.pageY - this.dragging.top
+      });
+    }
+  }
+}
+
+export class ObjectEditor extends WindowElement {
 
   get target() {
     return this._target;
@@ -12,134 +199,116 @@ export class ObjectEditor extends HTMLDivElement {
 
   set target(val) {
     this._target = val;
+    this.title = val.tagName;
     this.render();
   }
 
   createdCallback() {
-    console.log('created!');
-    this.created = true;
-    this.createShadowRoot().innerHTML = `
-      <style>
-        :host {
-          display: block;
-          position: fixed;
-          top: calc(50% - 150px);
-          left: calc(50% - 200px);
-          right: 50%;
-          bottom: 50%;
-          background: white;
-          border: 1px solid #666;
-          width: 400px;
-          height: 300px;
-        }
+    console.log('editor createdCallback!');
 
-        #content {
-          height: 100%;
+    let styles = `
+      :host {
+        display: block;
+        position: fixed;
+        top: calc(50% - 150px);
+        left: calc(50% - 200px);
+        right: 50%;
+        bottom: 50%;
+        background: white;
+        border: 1px solid #666;
+        width: 400px;
+        height: 300px;
+        z-index: 100;
+      }
+
+      .main-content {
           width: 100%;
-        }
-
-        #script-list {
-          float: left;
+          display: flex;
+      }
+      #script-list {
           width: 20%;
-          height: 83%;
-        }
-        #script-list select {
+          min-width: 100px;
+          padding-right: 2px;
+      }
+      #script-list select {
           width: 100%;
           height: 100%;
-        }
-
-        #bar {
-          height: 30px;
-          background: cornsilk;
-        }
-        #bar .title {
-          float: left;
-          margin: 0;
-        }
-
-        #close {
+      }
+      textarea {
+          width: 80%;
+      }
+      .toolbar {
+          margin-top: 0.4rem;
+      }
+      .toolbar .bar-left {
+          display: inline-block;
+          text-align: left;
+      }
+      .toolbar .bar-right {
           float: right;
-        }
+          display: inline-block;
+          text-align: right;
+      }
+    `;
 
-        #editor {
-          float: left;
-          width: 78%;
-          height: 81%;
-        }
-
-        .toolbar {
-          width: 100%;
-          overflow: auto;
-        }
-
-        .bar-left {
-          float: left;
-        }
-        .bar-right {
-          float: right;
-        }
-      </style>
-
-      <div id="content"> 
-        <div id="bar">
-          <h2 class="title">Object Editor</h2>
-          <span id="close">X</span>
-        </div>
-        <div id="script-list">
-          <select size="20">
-          </select>
-        </div>
-        <textarea id="editor">edit me!</textarea>
-        <div class="toolbar">
-          <div class="bar-left">
-            <button id="add-script">Add</button>
-            <button id="add-script">Remove</button>
+    let content = `
+      <div class="main-content">
+          <div id="script-list">
+              <select size="20"></select>
           </div>
-          <div class="bar-right">
-            <button id="save-script">Save</button>
-          </div>
+          <textarea id="editor">edit me!</textarea>
+      </div>
+
+      <div class="toolbar">
+        <div class="bar-left">
+          <button id="add-script">Add</button>
+          <button id="add-script">Remove</button>
+        </div>
+        <div class="bar-right">
+          <button id="save-script">Save</button>
         </div>
       </div>
     `;
 
-    this.scriptList = this.shadowRoot.querySelector('#script-list select');
-    this.editor = this.shadowRoot.querySelector('#editor');
-    this.closeButton = this.shadowRoot.querySelector('#close');
+    this.styles = styles;
+    this.content = content;
+
+    super.createdCallback();
   }
 
   attachedCallback() {
-    console.log('attachedCallback!');
-    this.render();
+    console.log('editor attachedCallback!');
+    this.attached = true;
 
+    this.scriptList = this.shadowRoot.querySelector('#script-list select');
+    this.editor = this.shadowRoot.querySelector('#editor');
     this.scriptList.addEventListener('change', (e) => { this.scriptChanged(e) });
-    this.closeButton.addEventListener('click', (e) => { this.closeButtonClicked(e) });
+
+    this.render();
   }
 
   render() {
-    if (!this.created) {
+    super.render();
+    console.log('editor render!');
+    if (!this.attached) {
       return;
     }
 
-    console.log(this);
-    this.shadowRoot.querySelector('#bar .title').innerText = this.target.tagName;
-
     // Scripts
     let scriptHtml = '';
-    if (typeof this.target.__scripts__ !== 'undefined') {
+    if (this.target && typeof this.target.__scripts__ !== 'undefined') {
       for (let scriptName in this.target.__scripts__) {
         scriptHtml += '<option value="' + scriptName + '">' + scriptName + '</option>';
       }
     }
-    this.scriptList.innerHTML = scriptHtml;
-  }
-
-  closeButtonClicked() {
-    this.parentNode.removeChild(this);
+    // this.scriptList.innerHTML = scriptHtml;
+    this.shadowRoot.querySelector('#script-list select').innerHTML = scriptHtml;
   }
 
   scriptChanged(e) {
-    if (this.scriptList.selectedIndex >= 0) {
-      var scriptName = this.scriptList.selectedOptions[0].value;
+    let scriptList = this.shadowRoot.querySelector('#script-list select');
+    if (scriptList.selectedIndex >= 0) {
+      var scriptName = scriptList.selectedOptions[0].value;
       this.loadScript(scriptName);
     }
   }
@@ -150,7 +319,8 @@ export class ObjectEditor extends HTMLDivElement {
       return;
     }
 
-    this.editor.innerText = this.target.__scripts__[scriptName];
+    // this.editor.innerText = this.target.__scripts__[scriptName];
+    this.shadowRoot.querySelector('#editor').innerText = this.target.__scripts__[scriptName];
   }
 }
 
