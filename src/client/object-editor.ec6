@@ -37,7 +37,7 @@ export class WindowElement extends HTMLDivElement {
     if (this.created) {
       this.stylesBlock.innerHTML = val;
     }
-  }  
+  }
 
   // called when element is created
   createdCallback() {
@@ -151,7 +151,7 @@ export class WindowElement extends HTMLDivElement {
 
       // only update when it changed, so we dont update it unnecessarily
       if (this.contentBlock.innerHTML !== this.content) {
-        this.contentBlock.innerHTML = this.content;  
+        this.contentBlock.innerHTML = this.content;
       }
     }
   }
@@ -215,7 +215,6 @@ export class ObjectEditor extends WindowElement {
         right: 50%;
         bottom: 50%;
         background: white;
-        border: 1px solid #666;
         width: 400px;
         height: 300px;
         z-index: 100;
@@ -256,13 +255,13 @@ export class ObjectEditor extends WindowElement {
           <div id="script-list">
               <select size="20"></select>
           </div>
-          <textarea id="editor">edit me!</textarea>
+          <textarea id="editor"></textarea>
       </div>
 
       <div class="toolbar">
         <div class="bar-left">
           <button id="add-script">Add</button>
-          <button id="add-script">Remove</button>
+          <button id="remove-script">Remove</button>
         </div>
         <div class="bar-right">
           <button id="save-script">Save</button>
@@ -282,7 +281,14 @@ export class ObjectEditor extends WindowElement {
 
     this.scriptList = this.shadowRoot.querySelector('#script-list select');
     this.editor = this.shadowRoot.querySelector('#editor');
+    this.addButton = this.shadowRoot.querySelector('#add-script');
+    this.removeButton = this.shadowRoot.querySelector('#remove-script');
+    this.saveButton = this.shadowRoot.querySelector('#save-script');
+
     this.scriptList.addEventListener('change', (e) => { this.scriptChanged(e) });
+    this.addButton.addEventListener('click', (e) => { this.addButtonClicked(e) });
+    this.removeButton.addEventListener('click', (e) => { this.removeButtonClicked(e) });
+    this.saveButton.addEventListener('click', (e) => { this.saveButtonClicked(e) });
 
     this.render();
   }
@@ -295,14 +301,50 @@ export class ObjectEditor extends WindowElement {
     }
 
     // Scripts
-    let scriptHtml = '';
-    if (this.target && typeof this.target.__scripts__ !== 'undefined') {
-      for (let scriptName in this.target.__scripts__) {
-        scriptHtml += '<option value="' + scriptName + '">' + scriptName + '</option>';
-      }
+    this.updateScripts();
+  }
+
+  addButtonClicked(e) {
+    if (!this.target) {
+      return;
     }
-    // this.scriptList.innerHTML = scriptHtml;
-    this.shadowRoot.querySelector('#script-list select').innerHTML = scriptHtml;
+
+    if (typeof this.target.__scripts__ === 'undefined') {
+        this.target.__scripts__ = {};
+    }
+
+    var scriptName = prompt('Please enter a new script name', '');
+    if (!scriptName || scriptName.length <= 0) {
+        return;
+    }
+
+    if (typeof this.target.__scripts__[scriptName] !== 'undefined') {
+        alert('Script name already in use.');
+        return;
+    }
+
+    scriptManager.addScript(this.target, 'function ' + scriptName + '() {\n  \n}');
+    this.updateScripts();
+    this.scriptList.selectedIndex = Object.keys(this.target.__scripts__).length - 1;
+    this.scriptChanged();
+  }
+
+  removeButtonClicked(e) {
+    if (this.target) {
+      let scriptName = this.scriptList.value;
+      if (scriptName) {
+        delete this.target.__scripts__[scriptName];
+      }
+      this.editor.value = '';
+      this.scriptList.removeChild(this.scriptList.querySelector('option[value="' + scriptName + '"]'));
+    }
+  }
+
+  saveButtonClicked(e) {
+    if (this.target && this.scriptList.selectedIndex >= 0) {
+      var scriptName = scriptList.selectedOptions[0].value;
+      scriptManager.addScript(this.target, this.editor.value, { update: true });
+    }
   }
 
   scriptChanged(e) {
@@ -321,6 +363,16 @@ export class ObjectEditor extends WindowElement {
 
     // this.editor.innerText = this.target.__scripts__[scriptName];
     this.shadowRoot.querySelector('#editor').innerText = this.target.__scripts__[scriptName];
+  }
+
+  updateScripts() {
+    let scriptHtml = '';
+    if (this.target && typeof this.target.__scripts__ !== 'undefined') {
+      for (let scriptName in this.target.__scripts__) {
+        scriptHtml += '<option value="' + scriptName + '">' + scriptName + '</option>';
+      }
+    }
+    this.shadowRoot.querySelector('#script-list select').innerHTML = scriptHtml;
   }
 }
 
