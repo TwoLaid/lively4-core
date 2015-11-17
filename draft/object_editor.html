@@ -98,7 +98,7 @@
     System.import(lively4url + "/src/client/load.js").then(function(){
         System.import("commandline.js")
         System.import(lively4url + "src/client/debug-serviceworker.js")
-        System.import(lively4url + "src/client/object-editor.ec6") .then(function(module) {
+        System.import(lively4url + "src/client/object-editor.js") .then(function(module) {
             ObjectEditor = module.ObjectEditor;
         });
     }).catch(function(err) { alert("load Lively4 failed")})
