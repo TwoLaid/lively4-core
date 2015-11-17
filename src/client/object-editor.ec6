@@ -342,7 +342,7 @@ export class ObjectEditor extends WindowElement {
 
   saveButtonClicked(e) {
     if (this.target && this.scriptList.selectedIndex >= 0) {
-      var scriptName = scriptList.selectedOptions[0].value;
+      var scriptName = this.scriptList.selectedOptions[0].value;
       scriptManager.addScript(this.target, this.editor.value, { update: true });
     }
   }
@@ -362,7 +362,7 @@ export class ObjectEditor extends WindowElement {
     }
 
     // this.editor.innerText = this.target.__scripts__[scriptName];
-    this.shadowRoot.querySelector('#editor').innerText = this.target.__scripts__[scriptName];
+    this.shadowRoot.querySelector('#editor').value = this.target.__scripts__[scriptName];
   }
 
   updateScripts() {
