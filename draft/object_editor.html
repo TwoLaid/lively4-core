@@ -151,9 +151,13 @@ $('#object-script-run').click(function() {
 
 $('#object-inspect').click(function() {
     if (currentElement) {
-        var objectEditor = document.createElement('object-editor');
+        var objectEditor = document.createElement('lively-object-editor');
+        var win = document.createElement('lively-window');
         objectEditor.target = currentElement;
-        $('body').append(objectEditor);
+        win.title = currentElement.tagName;
+        $(win).append(objectEditor);
+        $('body').append(win);
+        win.centerInWindow();
     }
 })
 

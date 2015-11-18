@@ -4,7 +4,9 @@
 function HTMLElement() {}
 HTMLElement.prototype = _HTMLElement.prototype;*/
 
-export class WindowElement extends HTMLDivElement {
+
+
+export class LivelyWindow extends HTMLDivElement {
 
   // window title
   get title() {
@@ -21,22 +23,6 @@ export class WindowElement extends HTMLDivElement {
   }
   set content(val) {
     this._content =  val;
-
-    if (this.created) {
-      this.contentBlock.innerHTML = val;
-    }
-  }
-
-  // additional CSS styles
-  get styles() {
-    return this._styles;
-  }
-  set styles(val) {
-    this._styles =  val;
-
-    if (this.created) {
-      this.stylesBlock.innerHTML = val;
-    }
   }
 
   // called when element is created
@@ -45,8 +31,12 @@ export class WindowElement extends HTMLDivElement {
 
     this.createShadowRoot().innerHTML = `
       <style>
+        :host {
+          position: fixed;
+          z-index: 100;
+        }
         :host * {
-            box-sizing: border-box;
+          box-sizing: border-box;
         }
         .window {
             width: auto;
@@ -101,9 +91,6 @@ export class WindowElement extends HTMLDivElement {
         }
       </style>
 
-      <style id="window-styles">
-      </style>
-
       <div class="window">
           <div class="window-titlebar">
               <div class="window-title"><span></span></div>
@@ -113,7 +100,9 @@ export class WindowElement extends HTMLDivElement {
                   <span class="window-close">&#10005;</span>
               </div>
           </div>
-          <div class="window-content" id="window-content"></div>
+          <div class="window-content" id="window-content">
+            <content></content>
+          </div>
       </div>
     `;
 
@@ -123,7 +112,6 @@ export class WindowElement extends HTMLDivElement {
     this.maxButton = this.shadowRoot.querySelector('.window-max');
     this.closeButton = this.shadowRoot.querySelector('.window-close');
     this.contentBlock = this.shadowRoot.querySelector('#window-content');
-    this.stylesBlock = this.shadowRoot.querySelector('#window-styles');
 
     // bind events for window behavior
     this.dragging = false;
@@ -147,12 +135,6 @@ export class WindowElement extends HTMLDivElement {
     console.log('window render!');
     if (this.created) {
       this.titleSpan.innerText = this.title;
-      this.stylesBlock.innerHTML = this.styles;
-
-      // only update when it changed, so we dont update it unnecessarily
-      if (this.contentBlock.innerHTML !== this.content) {
-        this.contentBlock.innerHTML = this.content;
-      }
     }
   }
 
@@ -189,9 +171,16 @@ export class WindowElement extends HTMLDivElement {
       });
     }
   }
+
+  // Public interface
+  centerInWindow() {
+    let rect = this.getBoundingClientRect();
+    this.style.top = 'calc(50% - ' + (rect.height / 2) + 'px)';
+    this.style.left = 'calc(50% - ' + (rect.width / 2) + 'px)';
+  }
 }
 
-export class ObjectEditor extends WindowElement {
+export class ObjectEditor extends HTMLDivElement {
 
   get target() {
     return this._target;
@@ -207,17 +196,13 @@ export class ObjectEditor extends WindowElement {
     console.log('editor createdCallback!');
 
     let styles = `
+    <style>
       :host {
         display: block;
-        position: fixed;
-        top: calc(50% - 150px);
-        left: calc(50% - 200px);
-        right: 50%;
-        bottom: 50%;
+        position: relative;
         background: white;
         width: 400px;
-        height: 300px;
-        z-index: 100;
+        /*height: 300px;*/
       }
 
       .main-content {
@@ -248,6 +233,7 @@ export class ObjectEditor extends WindowElement {
           display: inline-block;
           text-align: right;
       }
+    </style>
     `;
 
     let content = `
@@ -269,10 +255,7 @@ export class ObjectEditor extends WindowElement {
       </div>
     `;
 
-    this.styles = styles;
-    this.content = content;
-
-    super.createdCallback();
+    this.createShadowRoot().innerHTML = styles + content;
   }
 
   attachedCallback() {
@@ -294,7 +277,6 @@ export class ObjectEditor extends WindowElement {
   }
 
   render() {
-    super.render();
     console.log('editor render!');
     if (!this.attached) {
       return;
@@ -376,4 +358,5 @@ export class ObjectEditor extends WindowElement {
   }
 }
 
-document.registerElement('object-editor', ObjectEditor);
+document.registerElement('lively-object-editor', ObjectEditor);
+document.registerElement('lively-window', LivelyWindow);
